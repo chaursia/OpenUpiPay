@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { requireAdminSession } from "@/lib/auth/middleware";
 import type { VpaRow } from "@/types/database";
 
 const CreateVpaSchema = z.object({
@@ -19,6 +20,9 @@ const UpdateVpaSchema = z.object({
 
 /** GET /api/v1/admin/vpas — list all VPAs */
 export async function GET() {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   try {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
@@ -35,6 +39,9 @@ export async function GET() {
 
 /** POST /api/v1/admin/vpas — add a new VPA */
 export async function POST(req: NextRequest) {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   let body;
   try {
     body = CreateVpaSchema.parse(await req.json());
@@ -66,6 +73,9 @@ export async function POST(req: NextRequest) {
 
 /** PATCH /api/v1/admin/vpas — update a VPA (toggle active, edit limits, reset count) */
 export async function PATCH(req: NextRequest) {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   let body;
   try {
     body = UpdateVpaSchema.parse(await req.json());
@@ -98,6 +108,9 @@ export async function PATCH(req: NextRequest) {
 
 /** DELETE /api/v1/admin/vpas?id=<uuid> — permanently delete a VPA */
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 

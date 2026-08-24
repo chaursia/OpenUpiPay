@@ -164,7 +164,7 @@ OpenPayUPI implements distinct security boundaries for different client types:
 | `X-Client-Api-Key` | External Client Applications | Create orders, check status, submit manual UTR & OCR |
 | `X-Device-Secret` | Android Termux Agent | Submit SMS payment webhooks & telemetry heartbeats |
 | `x-cron-secret` | Vercel Cron / External Cron | Trigger cleanup and email polling jobs |
-| `Supabase Session Cookie` | Admin Dashboard Users | Access `/admin/*` control center routes |
+| `Supabase Session Cookie` | Admin Dashboard Users | Access `/admin/*` control center pages **and** all `/api/v1/admin/*` endpoints (enforced per-route) |
 
 ---
 
@@ -445,7 +445,7 @@ openpayupi/
 │   ├── api/
 │   │   ├── auth/signout/    # Session invalidation
 │   │   └── v1/
-│   │       ├── admin/       # CRUD endpoints (keys, vpas, orders, resolve, email)
+│   │       ├── admin/       # CRUD endpoints (keys, vpas, orders, resolve, devices, email)
 │   │       ├── cron/        # Automated maintenance (cleanup, email-poll)
 │   │       ├── device/      # Telemetry heartbeat
 │   │       ├── payment/     # Order creation, QR, manual UTR, OCR

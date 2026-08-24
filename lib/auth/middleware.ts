@@ -1,8 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
 type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"];
+
+/**
+ * Validates that the caller holds a valid Supabase admin session.
+ * Returns a 401 response to propagate when unauthenticated.
+ * proxy.ts only guards page routes (/admin/*), so API routes under
+ * /api/v1/admin/* must enforce this check themselves.
+ */
+export async function requireAdminSession(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return null;
+}
 
 /**
  * Validates the X-Client-Api-Key header.

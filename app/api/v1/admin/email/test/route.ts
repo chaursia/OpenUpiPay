@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminSession } from "@/lib/auth/middleware";
 import { fetchUnseenUpiEmails, getImapConfigFromEnv } from "@/lib/email/imapPoller";
 
 /**
@@ -6,6 +7,9 @@ import { fetchUnseenUpiEmails, getImapConfigFromEnv } from "@/lib/email/imapPoll
  * Tests the IMAP configuration and returns connection status + sample emails parsed.
  */
 export async function POST() {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   try {
     const imapConfig = getImapConfigFromEnv();
     const emails = await fetchUnseenUpiEmails(imapConfig, 5);

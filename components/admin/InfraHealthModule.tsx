@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 import { Smartphone, Wifi, WifiOff, Clock } from "lucide-react";
 
 type DeviceTelemetry = Database["public"]["Tables"]["device_telemetry"]["Row"];
 
 const OFFLINE_THRESHOLD_MS = 90_000; // 90 seconds
+const POLL_INTERVAL_MS = 10_000; // Re-fetch device list every 10s
 
 function getDeviceStatus(device: DeviceTelemetry): "ONLINE" | "OFFLINE" {
   const lastPing = new Date(device.last_ping_at).getTime();
@@ -28,45 +28,28 @@ export default function InfraHealthModule() {
   const [tick, setTick] = useState(0); // Force re-render every second
 
   useEffect(() => {
-    // Initial fetch
-    const supabase = createSupabaseBrowserClient();
-
     const fetchDevices = async () => {
-      const { data } = await supabase
-        .from("device_telemetry")
-        .select("*")
-        .order("last_ping_at", { ascending: false });
-      setDevices(data ?? []);
+      // RLS grants browser sessions no direct access to device_telemetry,
+      // so the list is fetched through the service-role admin API.
+      try {
+        const res = await fetch("/api/v1/admin/devices");
+        if (!res.ok) return;
+        const json = await res.json();
+        setDevices(json.data ?? []);
+      } catch {
+        // Network error — keep showing the previous snapshot
+      }
     };
 
     fetchDevices();
 
-    // Realtime subscription
-    const channel = supabase
-      .channel("device-telemetry")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "device_telemetry" },
-        (payload) => {
-          const updated = payload.new as DeviceTelemetry;
-          setDevices((prev) => {
-            const idx = prev.findIndex((d) => d.id === updated.id);
-            if (idx >= 0) {
-              const next = [...prev];
-              next[idx] = updated;
-              return next;
-            }
-            return [updated, ...prev];
-          });
-        }
-      )
-      .subscribe();
+    const poller = setInterval(fetchDevices, POLL_INTERVAL_MS);
 
     // Tick every second to update "last seen" counters
     const ticker = setInterval(() => setTick((t) => t + 1), 1000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(poller);
       clearInterval(ticker);
     };
   }, []);

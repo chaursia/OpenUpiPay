@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { requireAdminSession } from "@/lib/auth/middleware";
 import { generateApiKey } from "@/lib/utils/utr";
 
 const CreateKeySchema = z.object({
@@ -9,6 +10,9 @@ const CreateKeySchema = z.object({
 });
 
 export async function GET() {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   try {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
@@ -25,6 +29,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   let body;
   try {
     body = CreateKeySchema.parse(await req.json());
@@ -64,6 +71,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdminSession();
+  if (denied) return denied;
+
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
 
