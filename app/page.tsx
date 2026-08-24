@@ -196,7 +196,7 @@ export default function HomePage() {
             Open Admin Dashboard →
           </Link>
           <a
-            href="https://github.com"
+            href="https://github.com/chaursia"
             className="brut-btn brut-btn-ghost"
             style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}
             target="_blank"

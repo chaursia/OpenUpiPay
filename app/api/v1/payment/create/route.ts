@@ -38,37 +38,76 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const dynamicAmount = await allocateDynamicAmount(baseAmount);
     const vpa = await selectVpa();
     const expiresAt = generateExpiresAt(expiresInMinutes);
 
-    const { data: orderRaw, error: insertError } = await supabase
-      .from("orders")
-      .insert({
-        order_id_ext: orderIdExt,
-        base_amount: baseAmount,
-        dynamic_amount: dynamicAmount,
-        vpa_id: vpa.id,
-        status: "PENDING",
-        client_callback_url: callbackUrl ?? null,
-        api_key_id: apiKey.id,
-        expires_at: expiresAt,
-      })
-      .select()
-      .single();
+    // A partial unique index (uq_orders_pending_dynamic_amount) guarantees
+    // only one PENDING order per dynamic amount. On a rare conflict (two
+    // concurrent orders racing for the same decimal slot) re-scan and retry.
+    let order: OrderRow | null = null;
+    let dynamicAmount = 0;
+    const MAX_ALLOCATION_ATTEMPTS = 5;
 
-    if (insertError || !orderRaw) {
-      throw new Error(`Failed to create order: ${insertError?.message}`);
+    for (let attempt = 0; attempt < MAX_ALLOCATION_ATTEMPTS; attempt++) {
+      dynamicAmount = await allocateDynamicAmount(baseAmount);
+
+      const { data: orderRaw, error: insertError } = await supabase
+        .from("orders")
+        .insert({
+          order_id_ext: orderIdExt,
+          base_amount: baseAmount,
+          dynamic_amount: dynamicAmount,
+          vpa_id: vpa.id,
+          status: "PENDING",
+          client_callback_url: callbackUrl ?? null,
+          api_key_id: apiKey.id,
+          expires_at: expiresAt,
+        })
+        .select()
+        .single();
+
+      if (!insertError && orderRaw) {
+        order = orderRaw as OrderRow;
+        break;
+      }
+
+      const isDecimalCollision =
+        insertError?.code === "23505" &&
+        insertError.message.includes("uq_orders_pending_dynamic_amount");
+
+      if (!isDecimalCollision || attempt === MAX_ALLOCATION_ATTEMPTS - 1) {
+        throw new Error(`Failed to create order: ${insertError?.message}`);
+      }
     }
 
-    const order = orderRaw as OrderRow;
+    if (!order) {
+      throw new Error("Failed to create order");
+    }
 
-    await supabase
-      .from("vpas")
-      .update({ daily_tx_count: vpa.daily_tx_count + 1 })
-      .eq("id", vpa.id);
+    // Atomic, capacity-guarded increment (see migration 003). If it fails
+    // because another request exhausted this VPA's daily limit, fall back
+    // to selecting the next available VPA.
+    let assignedVpa = vpa;
+    const { data: incremented } = await supabase.rpc("increment_vpa_daily_count", {
+      p_vpa_id: vpa.id,
+    });
 
-    const upiUri = buildUpiUri(vpa.vpa_address, vpa.payee_name, dynamicAmount, order.id);
+    if (incremented !== true) {
+      assignedVpa = await selectVpa();
+
+      await supabase
+        .from("orders")
+        .update({ vpa_id: assignedVpa.id })
+        .eq("id", order.id);
+
+      await supabase.rpc("increment_vpa_daily_count", {
+        p_vpa_id: assignedVpa.id,
+      });
+
+      order.vpa_id = assignedVpa.id;
+    }
+
+    const upiUri = buildUpiUri(assignedVpa.vpa_address, assignedVpa.payee_name, dynamicAmount, order.id);
     const qrCodeDataUrl = await QRCode.toDataURL(upiUri, {
       errorCorrectionLevel: "M",
       width: 300,
@@ -86,8 +125,8 @@ export async function POST(req: NextRequest) {
           dynamicAmount,
           upiUri,
           qrCodeDataUrl,
-          vpa: vpa.vpa_address,
-          payeeName: vpa.payee_name,
+          vpa: assignedVpa.vpa_address,
+          payeeName: assignedVpa.payee_name,
           expiresAt,
           paymentPageUrl: `${process.env.NEXT_PUBLIC_APP_URL}/pay/${order.id}`,
         },

@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 
 /**
  * Hashes a UTR string using SHA-256 for idempotent storage.
@@ -21,9 +21,6 @@ export function validateUtr(utr: string): boolean {
  * Format: prefix_k_<32 hex chars>
  */
 export function generateApiKey(prefix: "client" | "device"): string {
-  const randomBytes = createHash("sha256")
-    .update(Math.random().toString() + Date.now().toString())
-    .digest("hex")
-    .slice(0, 32);
-  return `${prefix}_k_${randomBytes}`;
+  const randomHex = randomBytes(16).toString("hex");
+  return `${prefix}_k_${randomHex}`;
 }

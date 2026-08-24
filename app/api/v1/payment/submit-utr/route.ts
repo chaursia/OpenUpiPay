@@ -81,14 +81,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await supabase
+    // Guarded transition: only claim if still in a submittable state.
+    // Prevents overwriting a PAID status set by a concurrent webhook.
+    const { data: updatedOrder, error: updateError } = await supabase
       .from("orders")
       .update({
         status: "MANUAL_VERIFICATION" as const,
         upi_utr: trimmedUtr,
         verified_via: "MANUAL" as const,
       })
-      .eq("id", orderId);
+      .eq("id", orderId)
+      .in("status", ["PENDING", "PARTIAL_PAID"])
+      .select("id")
+      .maybeSingle();
+
+    if (updateError || !updatedOrder) {
+      return NextResponse.json(
+        { error: "Order state changed — it may already be paid or expired" },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json(
       {

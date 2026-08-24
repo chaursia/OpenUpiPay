@@ -47,33 +47,52 @@ export async function fireHmacCallback(
     .update(body)
     .digest("hex");
 
-  try {
-    const response = await fetch(order.client_callback_url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Webhook-Signature": `sha256=${signature}`,
-        "User-Agent": "OpenPayUPI-Webhook/1.0",
-      },
-      body,
-      signal: AbortSignal.timeout(10_000), // 10s timeout
-    });
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAYS_MS = [500, 2_000];
 
-    if (!response.ok) {
-      console.warn(
-        `[Webhook] Callback failed for order ${order.id}: HTTP ${response.status}`
-      );
-    } else {
-      console.log(
-        `[Webhook] Callback delivered for order ${order.id} → ${order.client_callback_url}`
-      );
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(order.client_callback_url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Webhook-Signature": `sha256=${signature}`,
+          "User-Agent": "OpenPayUPI-Webhook/1.0",
+        },
+        body,
+        signal: AbortSignal.timeout(10_000), // 10s timeout per attempt
+      });
+
+      if (response.ok) {
+        console.log(
+          `[Webhook] Callback delivered for order ${order.id} → ${order.client_callback_url}`
+        );
+        return;
+      }
+
+      // Retry only on transient upstream failures; 4xx means the client
+      // received and rejected the payload — retrying won't help.
+      const retryable = response.status === 429 || response.status >= 500;
+
+      if (!retryable || attempt === MAX_ATTEMPTS) {
+        console.warn(
+          `[Webhook] Callback failed for order ${order.id}: HTTP ${response.status}`
+        );
+        return;
+      }
+    } catch (err) {
+      // Network errors / timeouts are transient — retry unless out of attempts.
+      if (attempt === MAX_ATTEMPTS) {
+        // Log but don't throw — webhook delivery failure must not affect payment flow
+        console.error(
+          `[Webhook] Failed to deliver callback for order ${order.id}:`,
+          err
+        );
+        return;
+      }
     }
-  } catch (err) {
-    // Log but don't throw — webhook delivery failure should not affect payment flow
-    console.error(
-      `[Webhook] Failed to deliver callback for order ${order.id}:`,
-      err
-    );
+
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt - 1]));
   }
 }
 

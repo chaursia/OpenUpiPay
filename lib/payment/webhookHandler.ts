@@ -9,7 +9,9 @@ import type { OrderRow, ApiKeyRow, VerifiedVia } from "@/types/database";
 const WebhookSchema = z.object({
   amount: z.number().positive(),
   rawText: z.string().min(1),
-  utr: z.string().min(12).max(20),
+  utr: z
+    .string()
+    .regex(/^\d{12}$/, "UTR must be exactly 12 numeric digits"),
   deviceName: z.string().optional(),
 });
 
@@ -77,16 +79,45 @@ export async function handlePaymentWebhook(
 
     const order = orderRaw as OrderWithRelations;
 
-    await supabase
-      .from("orders")
-      .update({ status: "PAID", verified_via: channel, upi_utr: utr })
-      .eq("id", order.id);
+    // Atomically insert the UTR ledger row and transition PENDING -> PAID
+    // in a single DB transaction (see migration 003). Prevents duplicate
+    // credits when SMS/Email/OCR confirmations race each other.
+    const { data: claimed, error: claimError } = await supabase.rpc(
+      "claim_order_payment",
+      {
+        p_order_id: order.id,
+        p_channel: channel,
+        p_utr: utr,
+        p_utr_hash: utrHash,
+      }
+    );
 
-    await supabase.from("utr_ledger").insert({
-      utr_hash: utrHash,
-      order_id: order.id,
-      verified_at: new Date().toISOString(),
-    });
+    if (claimError) {
+      throw new Error(`Failed to claim order payment: ${claimError.message}`);
+    }
+
+    if (claimed !== true) {
+      // Either the UTR was used concurrently or this order was just
+      // settled by another channel. Report idempotent success if the
+      // UTR is already in the ledger, otherwise a conflict.
+      const { data: dupeLedger } = await supabase
+        .from("utr_ledger")
+        .select("order_id")
+        .eq("utr_hash", utrHash)
+        .maybeSingle();
+
+      if (dupeLedger) {
+        return NextResponse.json(
+          { success: true, message: "UTR already processed", orderId: (dupeLedger as LedgerRow).order_id },
+          { status: 200 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: "Order is no longer claimable (already paid or expired)" },
+        { status: 409 }
+      );
+    }
 
     if (deviceName) {
       await supabase
