@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 const HeartbeatSchema = z.object({
   deviceName: z.string().min(1).max(100),
+  deviceType: z.enum(["TERMUX", "APP"]).optional(),
   metadata: z
     .object({
       battery: z.number().min(0).max(100).optional(),
@@ -32,22 +33,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { deviceName } = body;
+  const { deviceName, deviceType } = body;
   const now = new Date().toISOString();
 
   try {
     const supabase = createSupabaseAdminClient();
 
+    // Only set device_type when the agent reports it — older agents
+    // (or unknown senders) must not erase an existing tag.
+    const upsertPayload: Record<string, unknown> = {
+      device_name: deviceName,
+      last_ping_at: now,
+      status: "ONLINE" as const,
+    };
+    if (deviceType) upsertPayload.device_type = deviceType;
+
     await supabase
       .from("device_telemetry")
-      .upsert(
-        {
-          device_name: deviceName,
-          last_ping_at: now,
-          status: "ONLINE" as const,
-        },
-        { onConflict: "device_name" }
-      );
+      .upsert(upsertPayload, { onConflict: "device_name" });
 
     return NextResponse.json(
       { success: true, serverTime: now, offlineThresholdSeconds: 90 },

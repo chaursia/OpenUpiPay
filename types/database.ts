@@ -21,6 +21,7 @@ export type OrderStatus =
 export type VerifiedVia = "SMS" | "EMAIL" | "OCR" | "MANUAL";
 export type KeyType = "CLIENT" | "DEVICE";
 export type DeviceStatus = "ONLINE" | "OFFLINE";
+export type DeviceType = "TERMUX" | "APP";
 
 // ── Per-table row types (convenience exports) ──────────────────────────
 export interface VpaRow {
@@ -66,6 +67,7 @@ export interface DeviceTelemetryRow {
   device_name: string;
   last_ping_at: string;
   status: DeviceStatus;
+  device_type: DeviceType | null;
   created_at: string;
   updated_at: string;
 }
@@ -183,6 +185,7 @@ export interface Database {
           device_name: string;
           last_ping_at?: string;
           status?: DeviceStatus;
+          device_type?: DeviceType | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -191,6 +194,7 @@ export interface Database {
           device_name?: string;
           last_ping_at?: string;
           status?: DeviceStatus;
+          device_type?: DeviceType | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -228,6 +232,7 @@ export interface Database {
       verified_via_enum: VerifiedVia;
       key_type_enum: KeyType;
       device_status_enum: DeviceStatus;
+      device_type_enum: DeviceType;
     };
     CompositeTypes: Record<string, never>;
   };

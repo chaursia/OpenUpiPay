@@ -13,6 +13,7 @@ const WebhookSchema = z.object({
     .string()
     .regex(/^\d{12}$/, "UTR must be exactly 12 numeric digits"),
   deviceName: z.string().optional(),
+  deviceType: z.enum(["TERMUX", "APP"]).optional(),
 });
 
 type OrderWithRelations = OrderRow & {
@@ -40,7 +41,7 @@ export async function handlePaymentWebhook(
     return NextResponse.json({ error: "Invalid request body", details: err }, { status: 400 });
   }
 
-  const { amount, utr, deviceName } = body;
+  const { amount, utr, deviceName, deviceType } = body;
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -120,12 +121,16 @@ export async function handlePaymentWebhook(
     }
 
     if (deviceName) {
+      const telemetryPayload: Record<string, unknown> = {
+        device_name: deviceName,
+        last_ping_at: new Date().toISOString(),
+        status: "ONLINE",
+      };
+      if (deviceType) telemetryPayload.device_type = deviceType;
+
       await supabase
         .from("device_telemetry")
-        .upsert(
-          { device_name: deviceName, last_ping_at: new Date().toISOString(), status: "ONLINE" },
-          { onConflict: "device_name" }
-        );
+        .upsert(telemetryPayload, { onConflict: "device_name" });
     }
 
     const clientKeyValue = order.api_keys?.key_value;
