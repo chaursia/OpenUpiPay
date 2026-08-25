@@ -461,7 +461,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
               </p>
               {order.base_amount !== order.dynamic_amount && (
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.62rem", margin: 0 }}>
-                  incl. tracking decimals
+                  including gateway fee
                 </p>
               )}
             </div>
