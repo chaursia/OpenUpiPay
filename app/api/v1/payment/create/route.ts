@@ -15,6 +15,8 @@ const CreatePaymentSchema = z.object({
   baseAmount: z.number().positive().max(100000),
   orderIdExt: z.string().min(1).max(100),
   callbackUrl: z.string().url().optional(),
+  // Customer-facing redirect target for the hosted /pay checkout page
+  returnUrl: z.string().url().max(500).optional(),
   expiresInMinutes: z.number().int().min(5).max(60).optional().default(15),
 });
 
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body", details: err }, { status: 400 });
   }
 
-  const { baseAmount, orderIdExt, callbackUrl, expiresInMinutes } = body;
+  const { baseAmount, orderIdExt, callbackUrl, returnUrl, expiresInMinutes } = body;
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest) {
           vpa_id: vpa.id,
           status: "PENDING",
           client_callback_url: callbackUrl ?? null,
+          return_url: returnUrl ?? null,
           api_key_id: apiKey.id,
           expires_at: expiresAt,
         })
@@ -129,6 +132,7 @@ export async function POST(req: NextRequest) {
           payeeName: assignedVpa.payee_name,
           expiresAt,
           paymentPageUrl: `${process.env.NEXT_PUBLIC_APP_URL}/pay/${order.id}`,
+          returnUrl: order.return_url ?? null,
         },
       },
       { status: 201 }

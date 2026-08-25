@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database, OrderStatus } from "@/types/database";
 import {
   CheckCircle,
@@ -117,33 +116,60 @@ export default function PaymentPageClient({ order }: { order: Order }) {
 
   const apiKey = process.env.NEXT_PUBLIC_CLIENT_API_KEY;
 
-  // ── Realtime subscription ──────────────────────────────────
+  // ── Status polling ─────────────────────────────────────────
+  // Supabase Realtime is unavailable here (RLS grants no SELECT to
+  // browser roles), so poll the public status endpoint instead.
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    const channel = supabase
-      .channel(`order-${order.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `id=eq.${order.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as Order;
-          setStatus(updated.status);
-          if (updated.status === "PAID") {
-            setTimeout(() => {
-              router.push(`/pay/${order.id}/success`);
-            }, 2000);
-          }
-        }
-      )
-      .subscribe();
+    let cancelled = false;
 
-    return () => { supabase.removeChannel(channel); };
-  }, [order.id, router]);
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/v1/payment/status/${order.id}`);
+        if (!res.ok || cancelled) return;
+        const json = await res.json();
+        if (!cancelled && json?.data?.status) {
+          setStatus(json.data.status as OrderStatus);
+        }
+      } catch {
+        // transient network error — keep polling
+      }
+    };
+
+    poll();
+    const t = setInterval(poll, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [order.id]);
+
+  // ── Redirect on settlement ────────────────────────────────
+  const redirectedRef = useRef(false);
+
+  useEffect(() => {
+    if (status !== "PAID" || redirectedRef.current) return;
+    redirectedRef.current = true;
+
+    const t = setTimeout(() => {
+      if (order.return_url) {
+        // Send the customer back to the merchant website
+        try {
+          const target = new URL(order.return_url);
+          target.searchParams.set("orderId", order.id);
+          target.searchParams.set("orderIdExt", order.order_id_ext);
+          target.searchParams.set("status", "PAID");
+          window.location.href = target.toString();
+        } catch {
+          window.location.href = order.return_url as string;
+        }
+      } else {
+        // No merchant URL configured — show the built-in receipt page
+        router.push(`/pay/${order.id}/success`);
+      }
+    }, 2000);
+
+    return () => clearTimeout(t);
+  }, [status, order.id, order.return_url, order.order_id_ext, router]);
 
   const handleUtrSubmit = useCallback(async () => {
     const trimmed = utrInput.trim();

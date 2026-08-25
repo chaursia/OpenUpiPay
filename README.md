@@ -185,9 +185,12 @@ X-Client-Api-Key: client_k_your_api_key
   "baseAmount": 100.00,
   "orderIdExt": "ORD-2026-001",
   "callbackUrl": "https://yourapp.com/api/webhook/upi",
+  "returnUrl": "https://yourapp.com/order/thanks",
   "expiresInMinutes": 15
 }
 ```
+
+> `callbackUrl` is your **server-to-server** webhook target. `returnUrl` is where the **customer's browser** is redirected after the hosted checkout confirms payment — it receives `?orderId=...&orderIdExt=...&status=PAID`. Both are optional.
 
 #### Response (`201 Created`)
 ```json
@@ -304,6 +307,30 @@ Serves an SVG QR code for any order.
 ```http
 GET /api/v1/payment/qr/:orderId
 ```
+
+---
+
+### 7. Order Status (Public)
+Lightweight status polling for the hosted checkout page. Returns only
+non-sensitive fields; the order ID is an unguessable UUID.
+
+```http
+GET /api/v1/payment/status/:orderId
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "status": "PAID",
+    "expiresAt": "2026-08-25T04:30:00.000Z",
+    "returnUrl": "https://yourapp.com/order/thanks"
+  }
+}
+```
+
+Status values: `PENDING`, `PAID`, `EXPIRED`, `MANUAL_VERIFICATION`, `PARTIAL_PAID`.
 
 ---
 
