@@ -11,6 +11,7 @@ type Order = {
   status: string;
   verified_via: string | null;
   upi_utr: string | null;
+  customer_mobile: string | null;
   created_at: string;
   expires_at: string;
   vpas?: { vpa_address: string } | null;
@@ -108,7 +109,7 @@ export default function OrdersPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "700px" }}>
             <thead>
               <tr style={{ background: "var(--color-surface-2)", borderBottom: "2px solid var(--color-border)" }}>
-                {["Order ID", "Amount", "VPA", "Status", "Via", "UTR", "Created"].map(h => (
+                {["Order ID", "Customer", "Amount", "VPA", "Status", "Via", "UTR", "Created"].map(h => (
                   <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-muted)", fontFamily: "var(--font-space)", whiteSpace: "nowrap" }}>
                     {h}
                   </th>
@@ -124,6 +125,15 @@ export default function OrdersPage() {
                       <span style={{ fontFamily: "monospace", fontSize: "0.75rem", fontWeight: 600 }}>
                         {order.order_id_ext}
                       </span>
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem" }}>
+                      {order.customer_mobile ? (
+                        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "#1F2937" }}>
+                          +91 {order.customer_mobile}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>—</span>
+                      )}
                     </td>
                     <td style={{ padding: "0.75rem 1rem", whiteSpace: "nowrap" }}>
                       <span style={{ fontWeight: 700 }}>₹{order.dynamic_amount.toFixed(2)}</span>

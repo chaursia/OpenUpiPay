@@ -18,7 +18,9 @@ const CreatePaymentSchema = z.object({
   callbackUrl: z.string().url().optional(),
   // Customer-facing redirect target for the hosted /pay checkout page
   returnUrl: z.string().url().max(500).optional(),
-  expiresInMinutes: z.number().int().min(5).max(60).optional().default(5),
+  // Accepted for backward compatibility but IGNORED: the hosted checkout
+  // always uses a fixed 5-minute window.
+  expiresInMinutes: z.number().int().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body", details: err }, { status: 400 });
   }
 
-  const { baseAmount, orderIdExt, callbackUrl, returnUrl, expiresInMinutes } = body;
+  const { baseAmount, orderIdExt, callbackUrl, returnUrl } = body;
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -47,7 +49,8 @@ export async function POST(req: NextRequest) {
     await expireOverdueOrders();
 
     const vpa = await selectVpa();
-    const expiresAt = generateExpiresAt(expiresInMinutes);
+    // Fixed checkout window — client-supplied values are ignored
+    const expiresAt = generateExpiresAt(5);
 
     // A partial unique index (uq_orders_pending_dynamic_amount) guarantees
     // only one PENDING order per dynamic amount. On a rare conflict (two
