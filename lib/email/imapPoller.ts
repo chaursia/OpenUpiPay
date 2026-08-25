@@ -106,7 +106,15 @@ export async function fetchUnseenUpiEmails(
       pass: config.password,
     },
     logger: false, // silence verbose logs
+    // Fail fast & loud instead of hanging until an uncaught socket timeout
+    greetingTimeout:    15_000,
+    connectionTimeout:  20_000,
+    socketTimeout:      30_000,
   });
+
+  // Late/duplicate socket errors fire AFTER our try/catch windows and would
+  // otherwise surface as Uncaught Exceptions killing the serverless function.
+  client.on("error", () => {});
 
   const results: ParsedEmail[] = [];
 
@@ -170,6 +178,7 @@ export async function fetchUnseenUpiEmails(
     await client.logout();
   } catch (err) {
     try { await client.logout(); } catch { /* ignore */ }
+    try { client.close(); } catch { /* ignore */ }
     throw err;
   }
 
