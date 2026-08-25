@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/middleware";
+import { expireOverdueOrders } from "@/lib/payment/sweeper";
 
 /**
  * GET /api/v1/admin/stats
@@ -12,6 +13,9 @@ export async function GET(req: NextRequest) {
   if (denied) return denied;
 
   try {
+    // Self-healing sweep so cards never count stale PENDING orders
+    await expireOverdueOrders();
+
     const supabase = createSupabaseAdminClient();
 
     // Head-count queries are cheap and exact

@@ -9,6 +9,7 @@ import {
   buildUpiUri,
   generateExpiresAt,
 } from "@/lib/payment/allocator";
+import { expireOverdueOrders } from "@/lib/payment/sweeper";
 import type { OrderRow } from "@/types/database";
 
 const CreatePaymentSchema = z.object({
@@ -17,7 +18,7 @@ const CreatePaymentSchema = z.object({
   callbackUrl: z.string().url().optional(),
   // Customer-facing redirect target for the hosted /pay checkout page
   returnUrl: z.string().url().max(500).optional(),
-  expiresInMinutes: z.number().int().min(5).max(60).optional().default(15),
+  expiresInMinutes: z.number().int().min(5).max(60).optional().default(5),
 });
 
 export async function POST(req: NextRequest) {
@@ -40,6 +41,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabase = createSupabaseAdminClient();
+
+    // Self-healing sweep: free decimal slots held by overdue PENDING
+    // orders before allocating (also runs on a cron schedule).
+    await expireOverdueOrders();
+
     const vpa = await selectVpa();
     const expiresAt = generateExpiresAt(expiresInMinutes);
 

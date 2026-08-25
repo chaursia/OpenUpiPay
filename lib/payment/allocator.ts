@@ -77,8 +77,8 @@ export function buildUpiUri(
 }
 
 /**
- * Generates expiry timestamp (default: 15 minutes from now).
+ * Generates expiry timestamp (default: 5 minutes from now).
  */
-export function generateExpiresAt(minutesFromNow = 15): string {
+export function generateExpiresAt(minutesFromNow = 5): string {
   return new Date(Date.now() + minutesFromNow * 60 * 1000).toISOString();
 }

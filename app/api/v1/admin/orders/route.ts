@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/middleware";
+import { expireOverdueOrders } from "@/lib/payment/sweeper";
 
 /**
  * GET /api/v1/admin/orders
@@ -10,6 +11,9 @@ import { requireAdminSession } from "@/lib/auth/middleware";
 export async function GET(req: NextRequest) {
   const denied = await requireAdminSession();
   if (denied) return denied;
+
+  // Self-healing sweep so the table reflects true expiry states
+  await expireOverdueOrders();
 
   const url    = new URL(req.url);
   const limit  = Math.min(parseInt(url.searchParams.get("limit")  ?? "20"), 100);

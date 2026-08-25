@@ -207,10 +207,16 @@ export default function PaymentPageClient({ order }: { order: Order }) {
   }, [order.id]);
 
   // ── Redirect on settlement ────────────────────────────────
+  // PAID    → merchant returnUrl (or built-in receipt page)
+  // EXPIRED → merchant returnUrl with status=EXPIRED so the customer
+  //           can start a fresh checkout there; without a returnUrl the
+  //           built-in expired screen is shown instead.
   const redirectedRef = useRef(false);
 
   useEffect(() => {
-    if (status !== "PAID" || redirectedRef.current) return;
+    if (redirectedRef.current) return;
+    const settled = status === "PAID" || status === "EXPIRED";
+    if (!settled) return;
     redirectedRef.current = true;
 
     const t = setTimeout(() => {
@@ -219,15 +225,21 @@ export default function PaymentPageClient({ order }: { order: Order }) {
           const target = new URL(order.return_url);
           target.searchParams.set("orderId", order.id);
           target.searchParams.set("orderIdExt", order.order_id_ext);
-          target.searchParams.set("status", "PAID");
+          target.searchParams.set("status", status);
           window.location.href = target.toString();
+          return;
         } catch {
           window.location.href = order.return_url as string;
+          return;
         }
-      } else {
+      }
+
+      // No merchant URL configured — fall back to built-in screens
+      if (status === "PAID") {
         router.push(`/pay/${order.id}/success`);
       }
-    }, 2000);
+      // EXPIRED: remain on the built-in expired screen
+    }, status === "PAID" ? 2_000 : 2_500);
 
     return () => clearTimeout(t);
   }, [status, order.id, order.return_url, order.order_id_ext, router]);
