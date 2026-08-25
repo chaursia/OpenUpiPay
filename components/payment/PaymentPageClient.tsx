@@ -7,7 +7,6 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
-  Upload,
   Hash,
   ChevronDown,
   ChevronUp,
@@ -18,18 +17,32 @@ type Order = Database["public"]["Tables"]["orders"]["Row"] & {
   vpas?: { vpa_address: string; payee_name: string } | null;
 };
 
-const COUNTDOWN_COLORS = {
-  safe: "#00C851",
-  warn: "#FF8C00",
-  danger: "#FF5733",
-};
-
 function formatAmount(n: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,
   }).format(n);
+}
+
+// ── Countdown colour helpers ─────────────────────────────────
+// Smooth green → amber → red interpolation instead of hard steps.
+
+type RGB = [number, number, number];
+const GREEN: RGB = [0, 200, 81];
+const AMBER: RGB = [255, 140, 0];
+const RED: RGB = [255, 87, 51];
+
+function lerpColor(a: RGB, b: RGB, t: number): string {
+  const c = a.map((av, i) => Math.round(av + (b[i] - av) * t));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
+/** pct: fraction of time remaining (1 → full, 0 → expired). */
+function progressColor(pct: number): string {
+  const clamped = Math.max(0, Math.min(1, pct));
+  if (clamped > 0.5) return lerpColor(AMBER, GREEN, (clamped - 0.5) / 0.5);
+  return lerpColor(RED, AMBER, clamped / 0.5);
 }
 
 function CountdownTimer({ expiresAt }: { expiresAt: string }) {
@@ -50,16 +63,13 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
-  const total = Math.floor(
-    (new Date(expiresAt).getTime() - Date.now() + remaining * 1000) / 1000
+  const total = Math.max(
+    1,
+    Math.floor((new Date(expiresAt).getTime() - Date.now() + remaining * 1000) / 1000)
   );
-  const pct = remaining / Math.max(total, 1);
-  const color =
-    pct > 0.5
-      ? COUNTDOWN_COLORS.safe
-      : pct > 0.2
-      ? COUNTDOWN_COLORS.warn
-      : COUNTDOWN_COLORS.danger;
+  const pct = Math.max(0, Math.min(1, remaining / total));
+  const color = progressColor(pct);
+  const urgent = remaining > 0 && remaining <= 120;
 
   // SVG ring
   const r = 40;
@@ -67,36 +77,90 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   const dash = circ * (1 - pct);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-      <svg width={100} height={100} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={50} cy={50} r={r} fill="none" stroke="var(--color-surface-2)" strokeWidth={8} />
+    <div
+      className={urgent ? "animate-pulse-dot" : undefined}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "0.5rem",
+      }}
+    >
+      <svg
+        width={104}
+        height={104}
+        style={{
+          transform: "rotate(-90deg)",
+          filter: `drop-shadow(0 0 5px ${color}66)`,
+        }}
+      >
+        {/* Track */}
+        <circle cx={52} cy={52} r={r} fill="none" stroke="var(--color-surface-2)" strokeWidth={9} />
+        {/* Progress */}
         <circle
-          cx={50}
-          cy={50}
+          cx={52}
+          cy={52}
           r={r}
           fill="none"
           stroke={color}
-          strokeWidth={8}
+          strokeWidth={9}
           strokeDasharray={circ}
           strokeDashoffset={dash}
           strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s" }}
+          style={{ transition: "stroke-dashoffset 1s linear, stroke 0.8s ease" }}
+        />
+        {/* Tick at the top marking the start point */}
+        <circle
+          cx={52}
+          cy={12}
+          r={3}
+          fill="#111111"
+          style={{ transformOrigin: "center" }}
         />
       </svg>
-      <div style={{ textAlign: "center", marginTop: "-80px", zIndex: 1 }}>
+      <div
+        style={{
+          textAlign: "center",
+          marginTop: "-84px",
+          zIndex: 1,
+          marginBottom: "24px",
+        }}
+      >
         <p
           style={{
             fontFamily: "var(--font-space)",
             fontWeight: 800,
-            fontSize: "1.2rem",
+            fontSize: "1.25rem",
             color,
+            fontVariantNumeric: "tabular-nums",
           }}
         >
           {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
         </p>
-        <p style={{ fontSize: "0.65rem", color: "var(--color-text-muted)" }}>remaining</p>
+        <p style={{ fontSize: "0.65rem", color: "var(--color-text-muted)" }}>
+          {remaining === 0 ? "expired" : "remaining"}
+        </p>
       </div>
-      <div style={{ height: 60 }} /> {/* spacer */}
+      {/* Linear mirror of the ring for quick scanning */}
+      <div
+        style={{
+          width: 104,
+          height: 6,
+          borderRadius: 999,
+          background: "var(--color-surface-2)",
+          overflow: "hidden",
+          border: "1.5px solid var(--color-border)",
+        }}
+      >
+        <div
+          style={{
+            width: `${pct * 100}%`,
+            height: "100%",
+            background: color,
+            transition: "width 1s linear, background 0.8s ease",
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -109,10 +173,6 @@ export default function PaymentPageClient({ order }: { order: Order }) {
   const [submitting, setSubmitting] = useState(false);
   const [utrSubmitted, setUtrSubmitted] = useState(false);
   const [showUtrForm, setShowUtrForm] = useState(false);
-  const [showOcrForm, setShowOcrForm] = useState(false);
-  const [ocrFile, setOcrFile] = useState<File | null>(null);
-  const [ocrUploading, setOcrUploading] = useState(false);
-  const [ocrMessage, setOcrMessage] = useState("");
 
   const apiKey = process.env.NEXT_PUBLIC_CLIENT_API_KEY;
 
@@ -198,29 +258,6 @@ export default function PaymentPageClient({ order }: { order: Order }) {
       setUtrError(json.error ?? "Submission failed");
     }
   }, [utrInput, order.id, apiKey]);
-
-  const handleOcrUpload = useCallback(async () => {
-    if (!ocrFile) return;
-    setOcrUploading(true);
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = (e.target?.result as string).split(",")[1];
-      const res = await fetch("/api/v1/payment/ocr-upload", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Client-Api-Key": apiKey ?? "",
-        },
-        body: JSON.stringify({ orderId: order.id, imageBase64: base64 }),
-      });
-      const json = await res.json();
-      setOcrMessage(json.message ?? (res.ok ? "Uploaded!" : json.error ?? "Failed"));
-      setOcrUploading(false);
-      if (res.ok) setStatus("MANUAL_VERIFICATION");
-    };
-    reader.readAsDataURL(ocrFile);
-  }, [ocrFile, order.id, apiKey]);
 
   // ── Paid state ─────────────────────────────────────────────
   if (status === "PAID") {
@@ -434,49 +471,6 @@ export default function PaymentPageClient({ order }: { order: Order }) {
               }}
             >
               ✓ UTR submitted — awaiting admin verification
-            </div>
-          )}
-        </div>
-
-        {/* OCR Upload section */}
-        <div style={{ marginTop: "0.625rem" }}>
-          <button
-            className="brut-btn brut-btn-ghost"
-            style={{ width: "100%", justifyContent: "space-between" }}
-            onClick={() => setShowOcrForm((p) => !p)}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Upload size={15} />
-              <span>Upload payment screenshot</span>
-            </div>
-            {showOcrForm ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
-
-          {showOcrForm && (
-            <div className="animate-slide-in" style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => setOcrFile(e.target.files?.[0] ?? null)}
-                style={{ fontSize: "0.82rem" }}
-              />
-              {ocrMessage && (
-                <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-text-muted)" }}>
-                  {ocrMessage}
-                </p>
-              )}
-              <button
-                className="brut-btn brut-btn-blue"
-                style={{ width: "100%" }}
-                onClick={handleOcrUpload}
-                disabled={!ocrFile || ocrUploading}
-              >
-                {ocrUploading ? (
-                  <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                ) : (
-                  "Upload & Auto-verify"
-                )}
-              </button>
             </div>
           )}
         </div>
