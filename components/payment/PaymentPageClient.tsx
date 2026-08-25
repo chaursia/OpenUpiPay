@@ -194,7 +194,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
           setStatus(json.data.status as OrderStatus);
         }
       } catch {
-        /* transient network error — keep polling */
+        /* transient network error- keep polling */
       }
     };
 
@@ -234,7 +234,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
         }
       }
 
-      // No merchant URL configured — fall back to built-in screens
+      // No merchant URL configured- fall back to built-in screens
       if (status === "PAID") {
         router.push(`/pay/${order.id}/success`);
       }
@@ -767,7 +767,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
                       color: C.purple,
                     }}
                   >
-                    ✓ UTR received — verification usually completes within a few minutes.
+                    ✓ UTR received- verification usually completes within a few minutes.
                   </div>
                 )}
               </div>

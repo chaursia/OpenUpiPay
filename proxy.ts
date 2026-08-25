@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session (important — do NOT remove)
+  // Refresh session (important- do NOT remove)
   const {
     data: { user },
   } = await supabase.auth.getUser();

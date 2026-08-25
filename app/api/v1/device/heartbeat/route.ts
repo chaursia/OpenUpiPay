@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = createSupabaseAdminClient();
 
-    // Only set device_type when the agent reports it — older agents
+    // Only set device_type when the agent reports it- older agents
     // (or unknown senders) must not erase an existing tag.
     const upsertPayload: Record<string, unknown> = {
       device_name: deviceName,

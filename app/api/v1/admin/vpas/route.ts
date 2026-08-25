@@ -18,7 +18,7 @@ const UpdateVpaSchema = z.object({
   resetCount:    z.boolean().optional(),
 });
 
-/** GET /api/v1/admin/vpas — list all VPAs */
+/** GET /api/v1/admin/vpas- list all VPAs */
 export async function GET() {
   const denied = await requireAdminSession();
   if (denied) return denied;
@@ -37,7 +37,7 @@ export async function GET() {
   }
 }
 
-/** POST /api/v1/admin/vpas — add a new VPA */
+/** POST /api/v1/admin/vpas- add a new VPA */
 export async function POST(req: NextRequest) {
   const denied = await requireAdminSession();
   if (denied) return denied;
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** PATCH /api/v1/admin/vpas — update a VPA (toggle active, edit limits, reset count) */
+/** PATCH /api/v1/admin/vpas- update a VPA (toggle active, edit limits, reset count) */
 export async function PATCH(req: NextRequest) {
   const denied = await requireAdminSession();
   if (denied) return denied;
@@ -106,7 +106,7 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-/** DELETE /api/v1/admin/vpas?id=<uuid> — permanently delete a VPA */
+/** DELETE /api/v1/admin/vpas?id=<uuid>- permanently delete a VPA */
 export async function DELETE(req: NextRequest) {
   const denied = await requireAdminSession();
   if (denied) return denied;

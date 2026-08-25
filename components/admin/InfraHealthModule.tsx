@@ -66,7 +66,7 @@ export default function InfraHealthModule() {
       const json = await res.json();
       setDevices(json.data ?? []);
     } catch {
-      // Network error — keep showing the previous snapshot
+      // Network error- keep showing the previous snapshot
     }
   }, []);
 

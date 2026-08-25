@@ -1,5 +1,5 @@
 /**
- * OCR Parser — Extracts UTR and amount from UPI payment screenshots.
+ * OCR Parser- Extracts UTR and amount from UPI payment screenshots.
  *
  * Uses Tesseract.js for in-process OCR on base64-encoded images.
  * Optimized for common Indian UPI app UI patterns (GPay, PhonePe, BHIM, Paytm).

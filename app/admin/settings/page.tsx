@@ -28,7 +28,7 @@ const ENV_SETTINGS: { section: string; icon?: React.ReactNode; items: SettingIte
     items: [
       { label: "Project URL",         envKey: "NEXT_PUBLIC_SUPABASE_URL",      hint: "Found in Supabase → Project Settings → API",                       type: "url",    required: true },
       { label: "Anon Public Key",     envKey: "NEXT_PUBLIC_SUPABASE_ANON_KEY", hint: "Safe to expose in browser. Controls RLS-guarded reads.",            type: "secret", required: true },
-      { label: "Service Role Key",    envKey: "SUPABASE_SERVICE_ROLE_KEY",      hint: "Admin-level key — NEVER expose to browser or commit to git.",       type: "secret", required: true },
+      { label: "Service Role Key",    envKey: "SUPABASE_SERVICE_ROLE_KEY",      hint: "Admin-level key- NEVER expose to browser or commit to git.",       type: "secret", required: true },
     ],
   },
   {

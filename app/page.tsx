@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "OpenPayUPI — Self-Hosted UPI Payment Gateway",
+  title: "OpenPayUPI- Self-Hosted UPI Payment Gateway",
   description:
     "A production-grade, self-hosted UPI payment gateway with dynamic QR generation, dual-channel SMS/Email verification, and real-time admin dashboard.",
 };
@@ -12,14 +12,14 @@ const features = [
     icon: "⚡",
     title: "Dynamic QR Allocation",
     description:
-      "Each order gets a unique decimal suffix (₹100.07) that maps to exactly one payment — no ambiguity, no collisions.",
+      "Each order gets a unique decimal suffix (₹100.07) that maps to exactly one payment- no ambiguity, no collisions.",
     accent: "#FFD60A",
   },
   {
     icon: "📱",
     title: "Dual-Channel Verification",
     description:
-      "Intercepts UPI payment confirmations via SMS (Termux) and Email IMAP in real time — fully automated.",
+      "Intercepts UPI payment confirmations via SMS (Termux) and Email IMAP in real time- fully automated.",
     accent: "#00C851",
   },
   {
@@ -40,7 +40,7 @@ const features = [
     icon: "🧠",
     title: "OCR Screenshot Fallback",
     description:
-      "Customer uploads a UPI payment screenshot — Tesseract.js extracts the UTR and amount automatically.",
+      "Customer uploads a UPI payment screenshot- Tesseract.js extracts the UTR and amount automatically.",
     accent: "#7B2FFF",
   },
   {
@@ -184,7 +184,7 @@ export default function HomePage() {
         >
           Generate dynamic UPI QR codes, verify payments automatically via SMS
           and Email interception, and manage everything from a real-time admin
-          dashboard — all self-hosted on your own infrastructure.
+          dashboard- all self-hosted on your own infrastructure.
         </p>
 
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
@@ -382,7 +382,7 @@ export default function HomePage() {
               Simple, predictable API
             </h2>
             <p style={{ color: "var(--color-text-muted)" }}>
-              RESTful endpoints with two auth headers — one for your app, one for your device.
+              RESTful endpoints with two auth headers- one for your app, one for your device.
             </p>
           </div>
 

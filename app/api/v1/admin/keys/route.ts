@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         data: {
           ...(data as object),
           key_value: keyValue,
-          warning: "Save this key now — it will not be shown again.",
+          warning: "Save this key now- it will not be shown again.",
         },
       },
       { status: 201 }

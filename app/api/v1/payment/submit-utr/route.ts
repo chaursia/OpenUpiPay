@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     if (updateError || !updatedOrder) {
       return NextResponse.json(
-        { error: "Order state changed — it may already be paid or expired" },
+        { error: "Order state changed- it may already be paid or expired" },
         { status: 409 }
       );
     }

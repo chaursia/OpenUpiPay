@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "crypto";
 
 /**
  * Hashes a UTR string using SHA-256 for idempotent storage.
- * The raw UTR is never stored — only its hash.
+ * The raw UTR is never stored- only its hash.
  */
 export function hashUtr(utr: string): string {
   return createHash("sha256").update(utr.trim()).digest("hex");

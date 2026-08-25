@@ -11,7 +11,7 @@ type SupabaseClient = ReturnType<typeof createServerClient>;
 
 /**
  * Creates a Supabase admin client for API routes.
- * Uses SERVICE_ROLE_KEY — bypasses RLS. Never expose to browser.
+ * Uses SERVICE_ROLE_KEY- bypasses RLS. Never expose to browser.
  */
 export function createSupabaseAdminClient(): SupabaseClient {
   return createServerClient(
@@ -38,7 +38,7 @@ export async function createSupabaseServerClient(): Promise<SupabaseClient> {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Server Component — cookie mutations are expected to fail
+            // Server Component- cookie mutations are expected to fail
           }
         },
       },

@@ -7,7 +7,7 @@ import ApiKeyManager from "@/components/admin/ApiKeyManager";
 import PaymentStatsModule from "@/components/admin/PaymentStatsModule";
 
 export const metadata: Metadata = {
-  title: "Admin Dashboard — OpenPayUPI",
+  title: "Admin Dashboard- OpenPayUPI",
   description: "Real-time UPI payment gateway administration dashboard",
 };
 

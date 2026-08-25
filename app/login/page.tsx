@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import LoginForm from "./LoginForm";
 
 export const metadata: Metadata = {
-  title: "Sign In — OpenPayUPI Admin",
+  title: "Sign In- OpenPayUPI Admin",
   description: "Sign in to the OpenPayUPI admin dashboard",
 };
 

@@ -108,7 +108,7 @@ export default function KeysPage() {
       {revealedKey && (
         <div className="animate-slide-in brut-card" style={{ marginBottom: "1.5rem", padding: "1.25rem", border: "2.5px solid var(--color-green)" }}>
           <p style={{ fontWeight: 700, marginBottom: "0.75rem", color: "var(--color-green)" }}>
-            ✓ New API key generated — copy it now, it will not be shown again.
+            ✓ New API key generated- copy it now, it will not be shown again.
           </p>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             <code style={{

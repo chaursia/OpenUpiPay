@@ -252,7 +252,7 @@ export default function ApiKeyManager() {
                   }}
                 >
                   <p style={{ fontWeight: 700, fontSize: "0.8rem", color: "#155724", marginBottom: "0.5rem" }}>
-                    ⚠️ Copy this key now — it will not be shown again.
+                    ⚠️ Copy this key now- it will not be shown again.
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <span

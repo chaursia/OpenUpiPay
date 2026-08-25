@@ -1,5 +1,5 @@
 // ============================================================
-// OpenPayUPI — TypeScript Database Types
+// OpenPayUPI- TypeScript Database Types
 // Matches the @supabase/supabase-js generic constraint exactly.
 // ============================================================
 

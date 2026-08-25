@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
             `[app-event] order ${order.id} confirmed via ${body.appName} (amount ${body.amount})`
           );
 
-          // Fire merchant webhook if configured — same contract as SMS path
+          // Fire merchant webhook if configured- same contract as SMS path
           const clientKeyValue =
             (order as EventWithRelations).api_keys?.key_value ?? null;
           if (clientKeyValue) {

@@ -89,7 +89,7 @@ export default function LiveOrdersModule() {
               updated[idx] = newOrder;
               return updated;
             }
-            // New order — prepend
+            // New order- prepend
             setNewOrderIds((s) => new Set([...s, newOrder.id]));
             setTimeout(
               () =>
@@ -218,7 +218,7 @@ export default function LiveOrdersModule() {
                       </span>
                     ) : (
                       <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
-                        —
+                       -
                       </span>
                     )}
                   </td>
@@ -267,7 +267,7 @@ export default function LiveOrdersModule() {
                       </span>
                     ) : (
                       <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
-                        —
+                       -
                       </span>
                     )}
                   </td>

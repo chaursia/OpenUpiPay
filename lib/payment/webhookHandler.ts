@@ -38,7 +38,7 @@ export function trustedBankSender(
     return match[1] === "T" || match[1] === "S";
   }
 
-  // Fallback: some devices strip the sender column — look for the
+  // Fallback: some devices strip the sender column- look for the
   // header token at the start of the message body instead.
   const embedded = /\b([A-Z]{2}-[A-Z0-9]{3,8}-([TS]))\b/.exec(
     rawText.toUpperCase().slice(0, 120)
@@ -74,7 +74,7 @@ export async function handlePaymentWebhook(
   const { amount, utr, deviceName, deviceType, sender } = body;
 
   // SMS spoofing defence: only TRAI DLT Transactional/Service headers.
-  // (Email and app-notification channels are exempt — no DLT headers.)
+  // (Email and app-notification channels are exempt- no DLT headers.)
   if (channel === "SMS" && !trustedBankSender(sender, body.rawText)) {
     return NextResponse.json(
       {

@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     await expireOverdueOrders();
 
     const vpa = await selectVpa();
-    // Fixed checkout window — client-supplied values are ignored
+    // Fixed checkout window- client-supplied values are ignored
     const expiresAt = generateExpiresAt(5);
 
     // A partial unique index (uq_orders_pending_dynamic_amount) guarantees

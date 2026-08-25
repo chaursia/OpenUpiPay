@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
  *
  * The cron endpoint (/api/v1/cron/cleanup) calls this on schedule, but it
  * is ALSO invoked lazily on hot paths (order creation, admin stats/orders)
- * so the system self-heals even when no external cron is configured —
+ * so the system self-heals even when no external cron is configured-
  * without it, stale PENDING rows block decimal slots and skew stats.
  */
 

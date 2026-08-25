@@ -71,7 +71,7 @@ export async function fireHmacCallback(
       }
 
       // Retry only on transient upstream failures; 4xx means the client
-      // received and rejected the payload — retrying won't help.
+      // received and rejected the payload- retrying won't help.
       const retryable = response.status === 429 || response.status >= 500;
 
       if (!retryable || attempt === MAX_ATTEMPTS) {
@@ -81,9 +81,9 @@ export async function fireHmacCallback(
         return;
       }
     } catch (err) {
-      // Network errors / timeouts are transient — retry unless out of attempts.
+      // Network errors / timeouts are transient- retry unless out of attempts.
       if (attempt === MAX_ATTEMPTS) {
-        // Log but don't throw — webhook delivery failure must not affect payment flow
+        // Log but don't throw- webhook delivery failure must not affect payment flow
         console.error(
           `[Webhook] Failed to deliver callback for order ${order.id}:`,
           err

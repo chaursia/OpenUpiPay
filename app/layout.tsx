@@ -15,7 +15,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "OpenPayUPI — Self-Hosted UPI Payment Gateway",
+  title: "OpenPayUPI- Self-Hosted UPI Payment Gateway",
   description:
     "A production-grade self-hosted UPI payment gateway with dynamic QR generation, SMS/Email payment interception, and real-time admin dashboard.",
 };

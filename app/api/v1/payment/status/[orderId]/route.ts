@@ -33,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Local expiry projection — don't wait for the cleanup cron
+    // Local expiry projection- don't wait for the cleanup cron
     const expired =
       (data as { status: string }).status === "PENDING" &&
       new Date((data as { expires_at: string }).expires_at).getTime() < Date.now();

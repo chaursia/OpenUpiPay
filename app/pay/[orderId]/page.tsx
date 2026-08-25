@@ -10,7 +10,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { orderId } = await params;
   return {
-    title: `Pay — Order ${orderId.slice(0, 8)}… | OpenPayUPI`,
+    title: `Pay- Order ${orderId.slice(0, 8)}… | OpenPayUPI`,
     description: "Complete your UPI payment securely",
   };
 }
