@@ -45,7 +45,13 @@ function progressColor(pct: number): string {
   return lerpColor(RED, AMBER, clamped / 0.5);
 }
 
-function CountdownTimer({ expiresAt }: { expiresAt: string }) {
+function CountdownTimer({
+  expiresAt,
+  createdAt,
+}: {
+  expiresAt: string;
+  createdAt?: string;
+}) {
   const [remaining, setRemaining] = useState(0);
 
   useEffect(() => {
@@ -61,12 +67,27 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
     return () => clearInterval(t);
   }, [expiresAt]);
 
+  // Total window of the order (creation → expiry). Falls back to the
+  // remaining time captured on first render when creation is unknown,
+  // so the ring always starts FULL and drains to EMPTY.
+  const totalSec = (() => {
+    if (createdAt) {
+      const t = Math.floor(
+        (new Date(expiresAt).getTime() - new Date(createdAt).getTime()) / 1000
+      );
+      if (t > 0) return t;
+    }
+    return null;
+  })();
+  const fallbackRef = useRef<number | null>(null);
+  if (fallbackRef.current === null) {
+    fallbackRef.current =
+      Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)) || 900;
+  }
+  const total = Math.max(totalSec ?? fallbackRef.current ?? 900, 1);
+
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
-  const total = Math.max(
-    1,
-    Math.floor((new Date(expiresAt).getTime() - Date.now() + remaining * 1000) / 1000)
-  );
   const pct = Math.max(0, Math.min(1, remaining / total));
   const color = progressColor(pct);
   const urgent = remaining > 0 && remaining <= 120;
@@ -140,26 +161,6 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
         <p style={{ fontSize: "0.65rem", color: "var(--color-text-muted)" }}>
           {remaining === 0 ? "expired" : "remaining"}
         </p>
-      </div>
-      {/* Linear mirror of the ring for quick scanning */}
-      <div
-        style={{
-          width: 104,
-          height: 6,
-          borderRadius: 999,
-          background: "var(--color-surface-2)",
-          overflow: "hidden",
-          border: "1.5px solid var(--color-border)",
-        }}
-      >
-        <div
-          style={{
-            width: `${pct * 100}%`,
-            height: "100%",
-            background: color,
-            transition: "width 1s linear, background 0.8s ease",
-          }}
-        />
       </div>
     </div>
   );
@@ -399,7 +400,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
 
         {/* Timer + Order ID */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-          <CountdownTimer expiresAt={order.expires_at} />
+          <CountdownTimer expiresAt={order.expires_at} createdAt={order.created_at} />
           <div style={{ textAlign: "right" }}>
             <p style={{ fontSize: "0.65rem", color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase" }}>
               Order ID
