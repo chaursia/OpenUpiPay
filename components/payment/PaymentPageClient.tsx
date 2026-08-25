@@ -320,7 +320,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
           </p>
           {order.base_amount !== order.dynamic_amount && (
             <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-              (includes ₹0.{Math.round((order.dynamic_amount - order.base_amount) * 100).toString().padStart(2, "0")} tracking suffix)
+              (includes ₹0.{Math.round((order.dynamic_amount - order.base_amount) * 100).toString().padStart(2, "0")} service fee)
             </p>
           )}
           <p style={{ fontSize: "0.82rem", color: "var(--color-text-muted)", marginTop: "0.25rem" }}>
