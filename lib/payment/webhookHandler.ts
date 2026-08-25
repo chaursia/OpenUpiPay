@@ -14,7 +14,37 @@ const WebhookSchema = z.object({
     .regex(/^\d{12}$/, "UTR must be exactly 12 numeric digits"),
   deviceName: z.string().optional(),
   deviceType: z.enum(["TERMUX", "APP"]).optional(),
+  // Originating address from the device (e.g. "JD-PNBSMS-S" for DLT SMS)
+  sender: z.string().max(32).optional(),
 });
+
+// ── TRAI DLT sender-header validation (anti-spoofing) ──────────────
+// Indian transactional SMS arrive from headers like "JD-PNBSMS-S":
+//   {2-letter operator prefix}-{sender id}-{message class suffix}
+// Only Transactional (T) and Service (S) classes are trusted. Plain
+// numbers, headerless senders, and Promotional/Government (P/G) are
+// rejected so a crafted SMS can never confirm a payment.
+const DLT_HEADER = /^[A-Z]{2}-[A-Z0-9]{3,8}-([A-Z])$/;
+
+export function trustedBankSender(
+  sender: string | undefined,
+  rawText: string
+): boolean {
+  const candidate = (sender ?? "").trim().toUpperCase();
+
+  if (candidate.includes("-")) {
+    const match = DLT_HEADER.exec(candidate);
+    if (!match) return false;
+    return match[1] === "T" || match[1] === "S";
+  }
+
+  // Fallback: some devices strip the sender column — look for the
+  // header token at the start of the message body instead.
+  const embedded = /\b([A-Z]{2}-[A-Z0-9]{3,8}-([TS]))\b/.exec(
+    rawText.toUpperCase().slice(0, 120)
+  );
+  return !!embedded;
+}
 
 type OrderWithRelations = OrderRow & {
   vpas?: { vpa_address: string; payee_name: string } | null;
@@ -41,7 +71,22 @@ export async function handlePaymentWebhook(
     return NextResponse.json({ error: "Invalid request body", details: err }, { status: 400 });
   }
 
-  const { amount, utr, deviceName, deviceType } = body;
+  const { amount, utr, deviceName, deviceType, sender } = body;
+
+  // SMS spoofing defence: only TRAI DLT Transactional/Service headers.
+  // (Email and app-notification channels are exempt — no DLT headers.)
+  if (channel === "SMS" && !trustedBankSender(sender, body.rawText)) {
+    return NextResponse.json(
+      {
+        success: false,
+        ignored: true,
+        error:
+          "Ignored: sender is not a TRAI DLT Transactional/Service header (expected XX-XXXXXX-T or -S)",
+        code: "UNTRUSTED_SENDER",
+      },
+      { status: 422 }
+    );
+  }
 
   try {
     const supabase = createSupabaseAdminClient();

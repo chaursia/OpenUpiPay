@@ -81,6 +81,18 @@ export interface UtrLedgerRow {
   created_at: string;
 }
 
+export interface AppPaymentEventRow {
+  id: string;
+  device_name: string;
+  app_name: string;
+  package_name: string | null;
+  title: string | null;
+  body: string | null;
+  amount: number | null;
+  occurred_at: string;
+  created_at: string;
+}
+
 // ── Full Database type (satisfies Supabase generic constraint) ─────────
 export interface Database {
   public: {
@@ -226,6 +238,31 @@ export interface Database {
             referencedColumns: ["id"];
           }
         ];
+      };
+      app_payment_events: {
+        Row: AppPaymentEventRow;
+        Insert: {
+          id?: string;
+          device_name: string;
+          app_name: string;
+          package_name?: string | null;
+          title?: string | null;
+          body?: string | null;
+          amount?: number | null;
+          occurred_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          device_name?: string;
+          app_name?: string;
+          package_name?: string | null;
+          title?: string | null;
+          body?: string | null;
+          amount?: number | null;
+          occurred_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

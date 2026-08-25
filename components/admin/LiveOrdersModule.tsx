@@ -187,6 +187,7 @@ export default function LiveOrdersModule() {
             <thead>
               <tr>
                 <th>Ext ID</th>
+                <th>Customer</th>
                 <th>Amount</th>
                 <th>VPA</th>
                 <th>Status</th>
@@ -209,6 +210,17 @@ export default function LiveOrdersModule() {
                     <span className="font-mono" style={{ fontSize: "0.75rem" }}>
                       {order.order_id_ext}
                     </span>
+                  </td>
+                  <td>
+                    {order.customer_mobile ? (
+                      <span className="font-mono" style={{ fontSize: "0.72rem", color: "#1F2937" }}>
+                        +91 {order.customer_mobile}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
+                        —
+                      </span>
+                    )}
                   </td>
                   <td>
                     <div>
