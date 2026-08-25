@@ -56,6 +56,7 @@ export interface OrderRow {
   upi_utr: string | null;
   client_callback_url: string | null;
   return_url: string | null;
+  customer_mobile: string | null;
   api_key_id: string | null;
   expires_at: string;
   created_at: string;
@@ -141,6 +142,7 @@ export interface Database {
           upi_utr?: string | null;
           client_callback_url?: string | null;
           return_url?: string | null;
+          customer_mobile?: string | null;
           api_key_id?: string | null;
           expires_at: string;
           created_at?: string;
@@ -157,6 +159,7 @@ export interface Database {
           upi_utr?: string | null;
           client_callback_url?: string | null;
           return_url?: string | null;
+          customer_mobile?: string | null;
           api_key_id?: string | null;
           expires_at?: string;
           updated_at?: string;
