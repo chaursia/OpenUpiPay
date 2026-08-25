@@ -87,30 +87,11 @@ export async function POST(req: NextRequest) {
       throw new Error("Failed to create order");
     }
 
-    // Atomic, capacity-guarded increment (see migration 003). If it fails
-    // because another request exhausted this VPA's daily limit, fall back
-    // to selecting the next available VPA.
-    let assignedVpa = vpa;
-    const { data: incremented } = await supabase.rpc("increment_vpa_daily_count", {
-      p_vpa_id: vpa.id,
-    });
+    // NOTE: the VPA daily counter is NOT incremented here. It now counts
+    // only COMPLETED (PAID) transactions and is bumped atomically inside
+    // claim_order_payment() when an order settles (see migration 006).
 
-    if (incremented !== true) {
-      assignedVpa = await selectVpa();
-
-      await supabase
-        .from("orders")
-        .update({ vpa_id: assignedVpa.id })
-        .eq("id", order.id);
-
-      await supabase.rpc("increment_vpa_daily_count", {
-        p_vpa_id: assignedVpa.id,
-      });
-
-      order.vpa_id = assignedVpa.id;
-    }
-
-    const upiUri = buildUpiUri(assignedVpa.vpa_address, assignedVpa.payee_name, dynamicAmount, order.id);
+    const upiUri = buildUpiUri(vpa.vpa_address, vpa.payee_name, dynamicAmount, order.id);
     const qrCodeDataUrl = await QRCode.toDataURL(upiUri, {
       errorCorrectionLevel: "M",
       width: 300,
@@ -128,8 +109,8 @@ export async function POST(req: NextRequest) {
           dynamicAmount,
           upiUri,
           qrCodeDataUrl,
-          vpa: assignedVpa.vpa_address,
-          payeeName: assignedVpa.payee_name,
+          vpa: vpa.vpa_address,
+          payeeName: vpa.payee_name,
           expiresAt,
           paymentPageUrl: `${process.env.NEXT_PUBLIC_APP_URL}/pay/${order.id}`,
           returnUrl: order.return_url ?? null,

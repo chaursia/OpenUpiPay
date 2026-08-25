@@ -187,12 +187,12 @@ export default function VpasPage() {
                   className="brut-input"
                   type="number"
                   min={1}
-                  max={100}
+                  max={500}
                   value={form.maxDailyLimit}
                   onChange={e => setForm(p => ({ ...p, maxDailyLimit: parseInt(e.target.value) || 15 }))}
                 />
                 <p style={{ fontSize: "0.68rem", color: "var(--color-text-muted)", marginTop: "0.25rem" }}>
-                  Recommended: 15 (UPI apps typically flag VPAs with excessive daily transactions)
+                  Max 500 completed (PAID) transactions per day. Counts only settled payments.
                 </p>
               </div>
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
@@ -269,7 +269,7 @@ export default function VpasPage() {
                           className="brut-input"
                           type="number"
                           min={1}
-                          max={100}
+                          max={500}
                           value={editState.maxDailyLimit}
                           onChange={e => setEditState(p => ({ ...p, maxDailyLimit: parseInt(e.target.value) || 15 }))}
                           style={{ width: "80px" }}

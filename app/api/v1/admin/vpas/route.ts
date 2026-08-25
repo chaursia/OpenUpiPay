@@ -7,13 +7,13 @@ import type { VpaRow } from "@/types/database";
 const CreateVpaSchema = z.object({
   vpaAddress:    z.string().min(3).max(100).regex(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/, "Invalid UPI VPA format"),
   payeeName:     z.string().min(1).max(100),
-  maxDailyLimit: z.number().int().min(1).max(100).optional().default(15),
+  maxDailyLimit: z.number().int().min(1).max(500).optional().default(15),
 });
 
 const UpdateVpaSchema = z.object({
   id:            z.string().uuid(),
   payeeName:     z.string().min(1).max(100).optional(),
-  maxDailyLimit: z.number().int().min(1).max(100).optional(),
+  maxDailyLimit: z.number().int().min(1).max(500).optional(),
   isActive:      z.boolean().optional(),
   resetCount:    z.boolean().optional(),
 });
