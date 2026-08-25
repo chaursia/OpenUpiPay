@@ -18,7 +18,7 @@ export type OrderStatus =
   | "MANUAL_VERIFICATION"
   | "PARTIAL_PAID";
 
-export type VerifiedVia = "SMS" | "EMAIL" | "OCR" | "MANUAL";
+export type VerifiedVia = "SMS" | "EMAIL" | "OCR" | "MANUAL" | "APP";
 export type KeyType = "CLIENT" | "DEVICE";
 export type DeviceStatus = "ONLINE" | "OFFLINE";
 export type DeviceType = "TERMUX" | "APP";
