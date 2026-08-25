@@ -4,6 +4,7 @@ import InfraHealthModule from "@/components/admin/InfraHealthModule";
 import VpaHealthModule from "@/components/admin/VpaHealthModule";
 import ManualResolutionQueue from "@/components/admin/ManualResolutionQueue";
 import ApiKeyManager from "@/components/admin/ApiKeyManager";
+import PaymentStatsModule from "@/components/admin/PaymentStatsModule";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard — OpenPayUPI",
@@ -38,6 +39,11 @@ export default function AdminPage() {
           gap: "1.25rem",
         }}
       >
+        {/* Row 0: Payment summary cards (full width) */}
+        <div style={{ gridColumn: "span 12" }}>
+          <PaymentStatsModule />
+        </div>
+
         {/* Row 1: Live Orders (7) + Infra Health (5) */}
         <div style={{ gridColumn: "span 7" }}>
           <LiveOrdersModule />
