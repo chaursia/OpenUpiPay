@@ -97,40 +97,6 @@ export default function HomePage() {
           <ArrowRight size={16} />
         </a>
 
-        <div
-          style={{
-            marginTop: "1.75rem",
-            paddingTop: "1.25rem",
-            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "1rem",
-            fontSize: "0.8rem",
-          }}
-        >
-          <Link
-            href="/admin"
-            style={{
-              color: "#94A3B8",
-              textDecoration: "none",
-              transition: "color 0.2s",
-            }}
-          >
-            Admin Panel
-          </Link>
-          <span style={{ color: "#475569" }}>•</span>
-          <Link
-            href="/login"
-            style={{
-              color: "#94A3B8",
-              textDecoration: "none",
-              transition: "color 0.2s",
-            }}
-          >
-            Sign In
-          </Link>
-        </div>
       </div>
     </main>
   );
