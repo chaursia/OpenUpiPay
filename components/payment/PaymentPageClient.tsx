@@ -11,6 +11,11 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
+  Smartphone,
+  QrCode,
+  ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 
 type Order = Database["public"]["Tables"]["orders"]["Row"] & {
@@ -303,8 +308,37 @@ export default function PaymentPageClient({ order }: { order: Order }) {
     }
   }, [utrInput, order.id, apiKey]);
 
+  const [payMode, setPayMode] = useState<"app" | "qr">("app");
+  const [copiedVpa, setCopiedVpa] = useState(false);
+
   const payee = order.vpas?.payee_name ?? "Merchant";
   const initials = payee.slice(0, 2).toUpperCase();
+  const vpa = order.vpas?.vpa_address ?? "";
+  const amountStr = order.dynamic_amount.toFixed(2);
+  const note = `ORDER-${order.order_id_ext}`;
+
+  const upiQuery = new URLSearchParams({
+    pa: vpa,
+    pn: payee,
+    am: amountStr,
+    cu: "INR",
+    tn: note,
+  }).toString();
+
+  const genericUpiUri = `upi://pay?${upiQuery}`;
+  const gpayUri = `gpay://upi/pay?${upiQuery}`;
+  const phonepeUri = `phonepe://pay?${upiQuery}`;
+  const paytmUri = `paytmmp://pay?${upiQuery}`;
+  const credUri = `credpay://upi/pay?${upiQuery}`;
+  const bhimUri = `bhim://pay?${upiQuery}`;
+
+  const copyVpa = useCallback(() => {
+    if (vpa) {
+      navigator.clipboard.writeText(vpa).catch(() => {});
+      setCopiedVpa(true);
+      setTimeout(() => setCopiedVpa(false), 2000);
+    }
+  }, [vpa]);
 
   const outerStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -588,7 +622,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "0.9rem",
+                  marginBottom: "1rem",
                 }}
               >
                 <CountdownTimer expiresAt={order.expires_at} createdAt={order.created_at} />
@@ -596,7 +630,7 @@ export default function PaymentPageClient({ order }: { order: Order }) {
                   <p style={{ fontSize: "0.6rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, fontWeight: 700 }}>
                     Order ID
                   </p>
-                  <p className="font-mono" style={{ fontSize: "0.72rem", fontWeight: 700, color: C.ink, margin: "0.15rem 0 0" }}>
+                  <p className="font-mono" style={{ fontSize: "0.75rem", fontWeight: 700, color: C.ink, margin: "0.15rem 0 0" }}>
                     {order.order_id_ext}
                   </p>
                   <p style={{ fontSize: "0.62rem", color: C.muted, margin: "0.3rem 0 0" }}>
@@ -605,68 +639,325 @@ export default function PaymentPageClient({ order }: { order: Order }) {
                 </div>
               </div>
 
-              {/* QR */}
-              <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-                <div
+              {/* Payment Mode Selector */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  background: "#F1F5F9",
+                  padding: "4px",
+                  borderRadius: 12,
+                  marginBottom: "1.1rem",
+                  gap: "4px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setPayMode("app")}
                   style={{
-                    display: "inline-block",
-                    padding: "0.8rem",
-                    border: `1.5px solid ${C.line}`,
-                    borderRadius: 16,
-                    background: "#fff",
-                    boxShadow: "0 6px 18px rgba(16,42,83,0.08)",
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/v1/payment/qr/${order.id}`}
-                    alt="UPI QR Code"
-                    width={196}
-                    height={196}
-                    style={{ display: "block" }}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                </div>
-                <p style={{ fontSize: "0.78rem", color: C.ink, fontWeight: 600, marginTop: "0.7rem", marginBottom: 0 }}>
-                  Scan this QR with any UPI app
-                </p>
-
-                {/* App chips */}
-                <div
-                  style={{
+                    border: "none",
+                    borderRadius: 9,
+                    padding: "7px 10px",
+                    fontWeight: 700,
+                    fontSize: "0.78rem",
+                    cursor: "pointer",
+                    fontFamily: FONT,
                     display: "flex",
+                    alignItems: "center",
                     justifyContent: "center",
-                    gap: "0.4rem",
-                    marginTop: "0.55rem",
-                    flexWrap: "wrap",
+                    gap: "6px",
+                    background: payMode === "app" ? "#fff" : "transparent",
+                    color: payMode === "app" ? C.navy : C.muted,
+                    boxShadow: payMode === "app" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  {["GPay", "PhonePe", "Paytm", "BHIM"].map((app) => (
-                    <span
-                      key={app}
+                  <Smartphone size={14} color={payMode === "app" ? C.blue : C.muted} />
+                  Pay via UPI App
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayMode("qr")}
+                  style={{
+                    border: "none",
+                    borderRadius: 9,
+                    padding: "7px 10px",
+                    fontWeight: 700,
+                    fontSize: "0.78rem",
+                    cursor: "pointer",
+                    fontFamily: FONT,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    background: payMode === "qr" ? "#fff" : "transparent",
+                    color: payMode === "qr" ? C.navy : C.muted,
+                    boxShadow: payMode === "qr" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <QrCode size={14} color={payMode === "qr" ? C.blue : C.muted} />
+                  Scan QR Code
+                </button>
+              </div>
+
+              {payMode === "app" ? (
+                /* ── Mode 1: 1-Tap UPI App Intent Payments ── */
+                <div style={{ marginBottom: "1.2rem" }}>
+                  {/* Primary 1-Tap Intent Button */}
+                  <a
+                    href={genericUpiUri}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      width: "100%",
+                      padding: "0.9rem",
+                      borderRadius: 14,
+                      background: "linear-gradient(135deg, #123262 0%, #1E7AE0 100%)",
+                      color: "#fff",
+                      textDecoration: "none",
+                      fontWeight: 700,
+                      fontSize: "0.95rem",
+                      boxShadow: "0 6px 20px rgba(30, 122, 224, 0.35)",
+                      marginBottom: "1rem",
+                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    }}
+                  >
+                    <ExternalLink size={17} />
+                    <span>Pay {formatAmount(order.dynamic_amount)} via Any UPI App</span>
+                  </a>
+
+                  {/* App Grid */}
+                  <p style={{ fontSize: "0.68rem", color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 0.6rem 0.1rem" }}>
+                    Or choose your preferred app:
+                  </p>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gap: "0.55rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    {/* Google Pay */}
+                    <a
+                      href={gpayUri}
                       style={{
-                        fontSize: "0.62rem",
-                        fontWeight: 700,
-                        color: C.navy,
-                        background: "#EEF3FA",
-                        borderRadius: 999,
-                        padding: "3px 10px",
-                        border: `1px solid ${C.line}`,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.65rem 0.4rem",
+                        border: `1.5px solid ${C.line}`,
+                        borderRadius: 12,
+                        textDecoration: "none",
+                        background: "#fff",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
                       }}
                     >
-                      {app}
-                    </span>
-                  ))}
-                </div>
+                      <div style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="24" height="24" viewBox="0 0 48 48">
+                          <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
+                          <path fill="#34A853" d="M6.3 14.7l6.6 4.8C14.7 16.1 19 13.5 24 13.5c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 16.3 2 9.7 7.3 6.3 14.7z"/>
+                          <path fill="#FBBC05" d="M24 46c5.9 0 10.9-2 14.5-5.4l-6.7-5.5C29.8 36.6 27.1 37.5 24 37.5c-6 0-10.7-3.1-11.8-8.5l-6.6 5.1C9 41.3 15.9 46 24 46z"/>
+                          <path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-.8 2.5-2.5 4.8-4.6 6.3l6.7 5.5C41.8 36.7 44.5 29.6 44.5 20z"/>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.ink, marginTop: 4 }}>GPay</span>
+                    </a>
 
-                <p style={{ fontSize: "0.68rem", color: C.muted, marginTop: "0.55rem", marginBottom: 0 }}>
-                  Pay exactly{" "}
-                  <b style={{ color: C.ink }}>{formatAmount(order.dynamic_amount)}</b> to{" "}
-                  <b style={{ color: C.ink }}>{order.vpas?.vpa_address}</b>
-                </p>
-              </div>
+                    {/* PhonePe */}
+                    <a
+                      href={phonepeUri}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.65rem 0.4rem",
+                        border: `1.5px solid ${C.line}`,
+                        borderRadius: 12,
+                        textDecoration: "none",
+                        background: "#fff",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                      }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#5F259F", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "0.95rem" }}>
+                        पे
+                      </div>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.ink, marginTop: 4 }}>PhonePe</span>
+                    </a>
+
+                    {/* Paytm */}
+                    <a
+                      href={paytmUri}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.65rem 0.4rem",
+                        border: `1.5px solid ${C.line}`,
+                        borderRadius: 12,
+                        textDecoration: "none",
+                        background: "#fff",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                      }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: "#002E6E", display: "flex", alignItems: "center", justifyContent: "center", color: "#00BAF2", fontWeight: 900, fontSize: "0.62rem", letterSpacing: "-0.03em" }}>
+                        Paytm
+                      </div>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.ink, marginTop: 4 }}>Paytm</span>
+                    </a>
+
+                    {/* CRED */}
+                    <a
+                      href={credUri}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.65rem 0.4rem",
+                        border: `1.5px solid ${C.line}`,
+                        borderRadius: 12,
+                        textDecoration: "none",
+                        background: "#fff",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                      }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: "0.65rem" }}>
+                        CRED
+                      </div>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.ink, marginTop: 4 }}>CRED</span>
+                    </a>
+
+                    {/* BHIM */}
+                    <a
+                      href={bhimUri}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.65rem 0.4rem",
+                        border: `1.5px solid ${C.line}`,
+                        borderRadius: 12,
+                        textDecoration: "none",
+                        background: "#fff",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                      }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #02A550 50%, #0081C6 50%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: "0.65rem" }}>
+                        BHIM
+                      </div>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.ink, marginTop: 4 }}>BHIM</span>
+                    </a>
+
+                    {/* Other UPI */}
+                    <a
+                      href={genericUpiUri}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.65rem 0.4rem",
+                        border: `1.5px solid ${C.line}`,
+                        borderRadius: 12,
+                        textDecoration: "none",
+                        background: "#fff",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                      }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: "#EEF3FA", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontWeight: 900, fontSize: "0.65rem" }}>
+                        ⚡
+                      </div>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.ink, marginTop: 4 }}>Other UPI</span>
+                    </a>
+                  </div>
+
+                  {/* Copy UPI Details Card */}
+                  <div
+                    style={{
+                      background: "#F8FAFC",
+                      border: `1px solid ${C.line}`,
+                      borderRadius: 12,
+                      padding: "0.75rem 0.9rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
+                      <span style={{ fontSize: "0.68rem", color: C.muted, fontWeight: 600 }}>UPI ID (VPA):</span>
+                      <button
+                        type="button"
+                        onClick={copyVpa}
+                        style={{
+                          border: "none",
+                          background: copiedVpa ? "#E8F8EF" : "#E2E8F0",
+                          color: copiedVpa ? C.green : C.ink,
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          fontFamily: FONT,
+                        }}
+                      >
+                        {copiedVpa ? <Check size={11} /> : <Copy size={11} />}
+                        {copiedVpa ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 700, color: C.ink, fontFamily: "monospace" }}>
+                      {order.vpas?.vpa_address}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                /* ── Mode 2: QR Code ── */
+                <div style={{ textAlign: "center", marginBottom: "1.1rem" }}>
+                  <div
+                    style={{
+                      display: "inline-block",
+                      padding: "0.8rem",
+                      border: `1.5px solid ${C.line}`,
+                      borderRadius: 16,
+                      background: "#fff",
+                      boxShadow: "0 6px 18px rgba(16,42,83,0.08)",
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/v1/payment/qr/${order.id}`}
+                      alt="UPI QR Code"
+                      width={196}
+                      height={196}
+                      style={{ display: "block" }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                  <p style={{ fontSize: "0.78rem", color: C.ink, fontWeight: 600, marginTop: "0.7rem", marginBottom: 0 }}>
+                    Scan this QR with any UPI app
+                  </p>
+
+                  <p style={{ fontSize: "0.68rem", color: C.muted, marginTop: "0.45rem", marginBottom: 0 }}>
+                    Pay exactly <b style={{ color: C.ink }}>{formatAmount(order.dynamic_amount)}</b> to <b style={{ color: C.ink }}>{order.vpas?.vpa_address}</b>
+                  </p>
+                </div>
+              )}
 
               {/* Divider */}
               <div style={{ borderTop: `1px dashed ${C.line}`, margin: "0 -1.5rem 1.1rem" }} />
