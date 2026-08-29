@@ -13,6 +13,7 @@ type OrderWithRelations = OrderRow & {
 
 type LedgerRow = { id: string; order_id: string };
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30; // Vercel: fail fast instead of hanging 300s
 
