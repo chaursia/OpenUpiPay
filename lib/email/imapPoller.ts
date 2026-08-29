@@ -110,32 +110,51 @@ export async function fetchUnseenUpiEmails(
   maxEmails = 20
 ): Promise<ParsedEmail[]> {
   let client: ImapFlow | null = null;
+  let lastError: Error | null = null;
 
   try {
+    const cleanHost = config.host.trim();
+    const cleanUser = config.user.trim();
+    const cleanPass = config.password.trim().replace(/\s+/g, "");
+
     client = new ImapFlow({
-      host:   config.host,
+      host:   cleanHost,
       port:   config.port,
       secure: config.secure,
       auth: {
-        user: config.user,
-        pass: config.password,
+        user: cleanUser,
+        pass: cleanPass,
+      },
+      tls: {
+        servername: cleanHost,
+        minVersion: "TLSv1.2",
       },
       logger: false,
       // Fail fast — defaults are 90s/300s which hit Vercel's 300s wall.
-      greetingTimeout:   10_000,
-      connectionTimeout: 10_000,
-      socketTimeout:     15_000,
+      greetingTimeout:   8_000,
+      connectionTimeout: 8_000,
+      socketTimeout:     12_000,
     });
 
-    // ImapFlow's socket can emit 'error' AFTER our await has already
-    // thrown — without a listener that becomes an Uncaught Exception.
-    client.on("error", () => {});
+    // Capture background socket/auth errors for better diagnostics
+    client.on("error", (err) => {
+      if (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+      }
+    });
 
-    await withTimeout(client.connect(), 12_000, "IMAP connect");
+    try {
+      await withTimeout(client.connect(), 10_000, "IMAP connect");
+    } catch (connectErr) {
+      if (lastError) {
+        throw new Error(`IMAP connection failed (${lastError.message})`);
+      }
+      throw connectErr;
+    }
 
     const lock = await withTimeout(
       client.getMailboxLock(config.mailbox),
-      10_000,
+      8_000,
       "Mailbox lock"
     );
 
@@ -144,7 +163,7 @@ export async function fetchUnseenUpiEmails(
     try {
       const searchResult = await withTimeout(
         client.search({ seen: false }) as Promise<unknown>,
-        10_000,
+        8_000,
         "IMAP search"
       );
       const uids = Array.isArray(searchResult) ? searchResult as number[] : [];
@@ -210,6 +229,9 @@ export async function fetchUnseenUpiEmails(
     if (client) {
       try { client.close(); } catch { /* ignore */ }
     }
+    if (lastError && err instanceof Error && !err.message.includes(lastError.message)) {
+      throw new Error(`${err.message} (${lastError.message})`);
+    }
     throw err;
   }
 }
@@ -218,22 +240,22 @@ export async function fetchUnseenUpiEmails(
  * Build ImapConfig from environment variables.
  */
 export function getImapConfigFromEnv(): ImapConfig {
-  const host     = process.env.IMAP_HOST;
-  const user     = process.env.IMAP_USER;
-  const password = process.env.IMAP_PASSWORD;
+  const host     = process.env.IMAP_HOST?.trim();
+  const user     = process.env.IMAP_USER?.trim();
+  const password = process.env.IMAP_PASSWORD?.trim().replace(/\s+/g, "");
 
   if (!host || !user || !password) {
     throw new Error(
-      "Missing IMAP configuration. Please set IMAP_HOST, IMAP_USER, and IMAP_PASSWORD in .env.local"
+      "Missing IMAP configuration. Please set IMAP_HOST, IMAP_USER, and IMAP_PASSWORD in .env.local / Vercel environment variables"
     );
   }
 
   return {
     host,
-    port:    parseInt(process.env.IMAP_PORT ?? "993"),
-    secure:  (process.env.IMAP_SECURE ?? "true") === "true",
+    port:    parseInt(process.env.IMAP_PORT?.trim() ?? "993", 10),
+    secure:  (process.env.IMAP_SECURE?.trim() ?? "true") === "true",
     user,
     password,
-    mailbox: process.env.IMAP_MAILBOX ?? "INBOX",
+    mailbox: (process.env.IMAP_MAILBOX?.trim() ?? "INBOX"),
   };
 }
