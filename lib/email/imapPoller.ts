@@ -88,45 +88,66 @@ export interface ImapConfig {
   mailbox:  string;    // default: "INBOX"
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 /**
  * Reads unseen UPI payment notification emails via IMAP.
  * Marks them as SEEN after reading.
  * Returns parsed results with amount + UTR extracted.
+ *
+ * Robustness: all network waits are hard-capped so the Vercel function
+ * never hangs for 300s. Late socket errors are swallowed to avoid
+ * "Uncaught Exception: Socket timeout" crashes.
  */
 export async function fetchUnseenUpiEmails(
   config: ImapConfig,
   maxEmails = 20
 ): Promise<ParsedEmail[]> {
-  const client = new ImapFlow({
-    host:   config.host,
-    port:   config.port,
-    secure: config.secure,
-    auth: {
-      user: config.user,
-      pass: config.password,
-    },
-    logger: false, // silence verbose logs
-    // Fail fast & loud instead of hanging until an uncaught socket timeout
-    greetingTimeout:    15_000,
-    connectionTimeout:  20_000,
-    socketTimeout:      30_000,
-  });
-
-  // Late/duplicate socket errors fire AFTER our try/catch windows and would
-  // otherwise surface as Uncaught Exceptions killing the serverless function.
-  client.on("error", () => {});
-
-  const results: ParsedEmail[] = [];
+  let client: ImapFlow | null = null;
 
   try {
-    await client.connect();
+    client = new ImapFlow({
+      host:   config.host,
+      port:   config.port,
+      secure: config.secure,
+      auth: {
+        user: config.user,
+        pass: config.password,
+      },
+      logger: false,
+      // Fail fast — defaults are 90s/300s which hit Vercel's 300s wall.
+      greetingTimeout:   10_000,
+      connectionTimeout: 10_000,
+      socketTimeout:     15_000,
+    });
 
-    const lock = await client.getMailboxLock(config.mailbox);
+    // ImapFlow's socket can emit 'error' AFTER our await has already
+    // thrown — without a listener that becomes an Uncaught Exception.
+    client.on("error", () => {});
+
+    await withTimeout(client.connect(), 12_000, "IMAP connect");
+
+    const lock = await withTimeout(
+      client.getMailboxLock(config.mailbox),
+      10_000,
+      "Mailbox lock"
+    );
+
+    const results: ParsedEmail[] = [];
 
     try {
-      // Search for UNSEEN messages (limit to maxEmails)
-      const searchResult = await client.search({ seen: false });
-      const uids = Array.isArray(searchResult) ? searchResult : [];
+      const searchResult = await withTimeout(
+        client.search({ seen: false }) as Promise<unknown>,
+        10_000,
+        "IMAP search"
+      );
+      const uids = Array.isArray(searchResult) ? searchResult as number[] : [];
       const recentUids = uids.slice(-maxEmails);
 
       if (recentUids.length === 0) {
@@ -138,7 +159,7 @@ export async function fetchUnseenUpiEmails(
         { uid: true, envelope: true, source: true }
       )) {
         try {
-          const sourceBuffer = msg.source;
+          const sourceBuffer = (msg as { source?: Uint8Array }).source;
           if (!sourceBuffer) continue;
 
           const stream = Readable.from(sourceBuffer);
@@ -155,34 +176,42 @@ export async function fetchUnseenUpiEmails(
           const utr     = isUpi ? extractUtr(body) : null;
 
           results.push({
-            uid:               msg.uid,
+            uid:               (msg as { uid: number }).uid,
             subject,
             from,
             date,
-            bodyText:          body.slice(0, 2000), // cap to 2KB
+            bodyText:          body.slice(0, 2000),
             amount,
             utr,
             isUpiNotification: isUpi,
           });
 
-          // Mark as SEEN so we don't re-process it
-          await client.messageFlagsAdd({ uid: msg.uid }, ["\\Seen"]);
+          await withTimeout(
+            client.messageFlagsAdd({ uid: (msg as { uid: number }).uid }, ["\\Seen"]) as Promise<unknown>,
+            5_000,
+            "Flag SEEN"
+          ).catch(() => {});
         } catch (parseErr) {
           console.warn("[IMAP] Failed to parse message:", parseErr);
         }
       }
     } finally {
-      lock.release();
+      try { lock.release(); } catch { /* ignore */ }
     }
 
-    await client.logout();
+    // Graceful close — don't let a dead socket hang the function
+    await withTimeout(client.logout(), 5_000, "IMAP logout").catch(() => {
+      try { client?.close(); } catch { /* ignore */ }
+    });
+
+    return results;
   } catch (err) {
-    try { await client.logout(); } catch { /* ignore */ }
-    try { client.close(); } catch { /* ignore */ }
+    // Ensure the socket is destroyed without awaiting a hanging LOGOUT.
+    if (client) {
+      try { client.close(); } catch { /* ignore */ }
+    }
     throw err;
   }
-
-  return results;
 }
 
 /**

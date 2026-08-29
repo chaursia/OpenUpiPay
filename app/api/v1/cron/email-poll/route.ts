@@ -13,6 +13,9 @@ type OrderWithRelations = OrderRow & {
 
 type LedgerRow = { id: string; order_id: string };
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 30; // Vercel: fail fast instead of hanging 300s
+
 /**
  * POST /api/v1/cron/email-poll
  * Header: x-cron-secret (or session auth for admin manual trigger)
@@ -45,7 +48,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const emails = await fetchUnseenUpiEmails(imapConfig, 20);
+    // Hard cap the entire IMAP round-trip at 25s so we never hit Vercel's
+    // 300s FUNCTION_INVOCATION_TIMEOUT — returns a clean JSON error instead.
+    const emails = await Promise.race([
+      fetchUnseenUpiEmails(imapConfig, 20),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("IMAP poll timed out after 25s — check IMAP_HOST/PORT/credentials and that IMAP is enabled on the mailbox")), 25_000)
+      ),
+    ]);
     const supabase = createSupabaseAdminClient();
     const processed: Array<{
       subject: string;
