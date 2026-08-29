@@ -1,6 +1,21 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { Readable } from "stream";
+import dns from "dns";
+
+// Custom DNS lookup that forces IPv4 to avoid AWS Lambda / Vercel IPv6 egress blackholes
+function ipv4Lookup(
+  hostname: string,
+  options: dns.LookupOptions | number,
+  callback: (err: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family?: number) => void
+) {
+  if (typeof options === "function") {
+    callback = options;
+    return dns.lookup(hostname, { family: 4 }, callback as (err: NodeJS.ErrnoException | null, address: string, family: number) => void);
+  }
+  const opts = typeof options === "object" ? { ...options, family: 4 } : { family: 4 };
+  return dns.lookup(hostname, opts as dns.LookupOneOptions, callback as (err: NodeJS.ErrnoException | null, address: string, family: number) => void);
+}
 
 // ── UPI email patterns ────────────────────────────────────────────────────────
 // Covers: PhonePe, GPay, Paytm, BHIM, NPCI, bank alerts
@@ -128,12 +143,13 @@ export async function fetchUnseenUpiEmails(
       tls: {
         servername: cleanHost,
         minVersion: "TLSv1.2",
-      },
+        lookup: ipv4Lookup,
+      } as unknown as Record<string, unknown>,
       logger: false,
       // Fail fast — defaults are 90s/300s which hit Vercel's 300s wall.
-      greetingTimeout:   8_000,
-      connectionTimeout: 8_000,
-      socketTimeout:     12_000,
+      greetingTimeout:   12_000,
+      connectionTimeout: 12_000,
+      socketTimeout:     15_000,
     });
 
     // Capture background socket/auth errors for better diagnostics
@@ -144,7 +160,7 @@ export async function fetchUnseenUpiEmails(
     });
 
     try {
-      await withTimeout(client.connect(), 10_000, "IMAP connect");
+      await withTimeout(client.connect(), 14_000, "IMAP connect");
     } catch (connectErr) {
       const capturedErr = lastError as Error | null;
       if (capturedErr) {
