@@ -146,8 +146,9 @@ export async function fetchUnseenUpiEmails(
     try {
       await withTimeout(client.connect(), 10_000, "IMAP connect");
     } catch (connectErr) {
-      if (lastError) {
-        throw new Error(`IMAP connection failed (${lastError.message})`);
+      const capturedErr = lastError as Error | null;
+      if (capturedErr) {
+        throw new Error(`IMAP connection failed (${capturedErr.message})`);
       }
       throw connectErr;
     }
@@ -229,8 +230,9 @@ export async function fetchUnseenUpiEmails(
     if (client) {
       try { client.close(); } catch { /* ignore */ }
     }
-    if (lastError && err instanceof Error && !err.message.includes(lastError.message)) {
-      throw new Error(`${err.message} (${lastError.message})`);
+    const capturedErr = lastError as Error | null;
+    if (capturedErr && err instanceof Error && !err.message.includes(capturedErr.message)) {
+      throw new Error(`${err.message} (${capturedErr.message})`);
     }
     throw err;
   }
