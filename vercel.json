@@ -1,7 +1,0 @@
-{
-  "crons": [
-    { "path": "/api/v1/cron/cleanup", "schedule": "0 * * * *" },
-    { "path": "/api/v1/cron/cleanup?resetVpas=true", "schedule": "0 0 * * *" },
-    { "path": "/api/v1/cron/email-poll", "schedule": "0 * * * *" }
-  ]
-}
